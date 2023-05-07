@@ -11,3 +11,6 @@ stan/model2023
 .stan
 stan/model2020
 output/*.svg
+/.bash_history
+/.cache/
+/.renv-cache/

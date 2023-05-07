@@ -3,14 +3,19 @@ GIT_TAG ?= $(shell git log --oneline | head -n1 | awk '{print $$1}')
 DOCKER_REGISTRY := mathematiguy
 IMAGE := $(DOCKER_REGISTRY)/$(REPO_NAME)
 HAS_DOCKER ?= $(shell which docker)
+UID ?= $(shell id -g)
+GID ?= $(shell id -u)
 RUN ?= $(if $(HAS_DOCKER), docker run $(DOCKER_ARGS) -it --rm -v $$(pwd):/code -w /code -u $(UID):$(GID) $(IMAGE))
-UID ?= user
-GID ?= user
 DOCKER_ARGS ?=
 
 .PHONY: docker docker-push docker-pull enter enter-root
 
-run:
+install: renv/profiles/buildsite/renv/library/R-4.2/x86_64-pc-linux-gnu renv/profiles/model/renv/library/R-4.2/x86_64-pc-linux-gnu
+
+renv/profiles/%/renv/library/R-4.2/x86_64-pc-linux-gnu:
+	$(RUN) Rscript -e "renv::restore(lockfile='renv/profiles/$*/renv.lock')"
+
+run: renv/profiles/buildsite/renv/library/R-4.2/x86_64-pc-linux-gnu renv/profiles/model/renv/library/R-4.2/x86_64-pc-linux-gnu
 	$(RUN) Rscript run.R
 
 docker:

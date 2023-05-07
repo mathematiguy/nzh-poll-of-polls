@@ -1,4 +1,4 @@
-FROM r-base:4.3.0
+FROM r-base:4.2.3
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt update
@@ -20,14 +20,16 @@ RUN apt install -y curl \
     libfontconfig1-dev
 
 # Copy the renv.lock file
-COPY renv /code
+COPY renv /code/renv
 
 # Install renv and set the custom repository
 RUN R -e "install.packages('renv', repos = 'https://cloud.r-project.org/')"
 
-WORKDIR /code
-RUN R -e "renv::restore(lockfile='renv/profiles/model/renv.lock')"
-
 # Add a non-root user
 RUN useradd -m myuser
 USER myuser
+
+# Set RENV_PATHS_CACHE and RENV_PATHS_USER to directories within /code
+ENV RENV_PATHS_CACHE /code/.renv-cache
+ENV RENV_PATHS_USER /code/.renv-user
+ENV HOME /code
