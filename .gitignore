@@ -14,3 +14,5 @@ output/*.svg
 /.bash_history
 /.cache/
 /.renv-cache/
+/.cmdstan/
+/.lesshst
