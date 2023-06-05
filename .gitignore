@@ -3,6 +3,7 @@
 .RData
 .Ruserdata
 
+**/.#*
 /.quarto/
 _targets
 _site
