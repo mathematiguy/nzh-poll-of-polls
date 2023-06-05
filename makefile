@@ -18,6 +18,11 @@ renv/profiles/%/renv/library/R-4.2/x86_64-pc-linux-gnu:
 .cmdstan/cmdstan-2.32.2:
 	$(RUN) Rscript -e "cmdstanr::install_cmdstan()"
 
+buildsite: $(shell ls *.qmd | sed 's/\.qmd/.html/g')
+
+%.html: %.qmd
+	$(RUN) quarto render $<
+
 run: renv/profiles/buildsite/renv/library/R-4.2/x86_64-pc-linux-gnu \
 	renv/profiles/model/renv/library/R-4.2/x86_64-pc-linux-gnu \
 	.cmdstan/cmdstan-2.32.2

@@ -54,6 +54,12 @@ RUN apt install -y r-base
 # Install renv and set the custom repository
 RUN Rscript -e "install.packages('renv', repos = 'https://cloud.r-project.org/')"
 
+# Install Quarto
+RUN wget https://github.com/quarto-dev/quarto-cli/releases/download/v1.3.361/quarto-1.3.361-linux-amd64.tar.gz
+RUN tar -C /opt -xvzf quarto-1.3.361-linux-amd64.tar.gz
+RUN ln -s /opt/quarto-1.3.361/bin/quarto /bin/quarto
+RUN quarto check
+
 # Add a non-root user
 RUN useradd -m myuser
 USER myuser
