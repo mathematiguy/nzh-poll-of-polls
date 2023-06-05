@@ -15,8 +15,13 @@ install: renv/profiles/buildsite/renv/library/R-4.2/x86_64-pc-linux-gnu renv/pro
 renv/profiles/%/renv/library/R-4.2/x86_64-pc-linux-gnu:
 	$(RUN) Rscript -e "renv::restore(lockfile='renv/profiles/$*/renv.lock')"
 
-run: renv/profiles/buildsite/renv/library/R-4.2/x86_64-pc-linux-gnu renv/profiles/model/renv/library/R-4.2/x86_64-pc-linux-gnu
-	$(RUN) Rscript run.R
+.cmdstan/cmdstan-2.32.2:
+	$(RUN) Rscript -e "cmdstanr::install_cmdstan()"
+
+run: renv/profiles/buildsite/renv/library/R-4.2/x86_64-pc-linux-gnu \
+	renv/profiles/model/renv/library/R-4.2/x86_64-pc-linux-gnu \
+	.cmdstan/cmdstan-2.32.2
+	$(RUN) bash run.sh
 
 docker:
 	docker build $(DOCKER_ARGS) --tag $(IMAGE):$(GIT_TAG) .
