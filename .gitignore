@@ -16,3 +16,4 @@ output/*.svg
 /.renv-cache/
 /.cmdstan/
 /.lesshst
+/.lintr
