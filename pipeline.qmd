@@ -24,7 +24,7 @@ We first define some global options/functions common to all targets. The list of
 packages loaded below are what targets needs to run the pipeline - along with
 the targets package itself and two additional targets-related
 packages: [tarchetypes](https://docs.ropensci.org/tarchetypes/index.html) and
-[stantargets](https://docs.ropensci.org/stantargets/index.html). If you don't 
+[stantargets](https://docs.ropensci.org/stantargets/index.html). If you don't
 want to use renv then manually installing these should be sufficient.
 
 
@@ -60,7 +60,7 @@ The first part of this pipeline downloads the poll results from the Wikipedia pa
 It also fetches recent election results from the electoral commission.
 
 Once the poll results have been downloaded they are filtered and marshalled into the
-format need by the model. 
+format need by the model.
 
 The model is then run and a few charts are generated from the model results.
 
@@ -75,7 +75,7 @@ can be used to skip the check - just set `skip_url_check` below to `TRUE`.
 
 Note that often this results in one of the poll objects being extracted again but
 no further dependencies are run as the resulting data has not changed. This ensures
-that minor changes to the page do not trigger a model re-run. 
+that minor changes to the page do not trigger a model re-run.
 
 The code to generate the urls is defined in [R/urls.R](https://github.com/nzherald/nzh-poll-of-polls/blob/main/R/urls.R)
 
@@ -116,7 +116,7 @@ list(
 )
 ```
 
-The electoral commission produces usually formatted csv files - the code in 
+The electoral commission produces usually formatted csv files - the code in
 [R/fetch-results.R](https://github.com/nzherald/nzh-poll-of-polls/blob/main/R/fetch-results.R)
 reads just a small portion of the results file.
 
@@ -137,7 +137,7 @@ list(
       results2020
     )
   )
-  
+
 )
 ```
 
@@ -151,29 +151,29 @@ Include parties who currently have a seat in parliament or who have polled over
 
 ```{targets params}
 list(
-  tar_target(pollsters, polls |> 
-               filter(Election == 2023) |> 
-               distinct(Pollster) |> 
+  tar_target(pollsters, polls |>
+               filter(Election == 2023) |>
+               distinct(Pollster) |>
                filter(!grepl('Roy|Horizon', Pollster))),
-  tar_target(parties_in_parliament, 
+  tar_target(parties_in_parliament,
              tibble(Party = c('ACT', 'Green', 'Labour', 'National', 'Te Pāti Māori'))),
-  tar_target(parties,  polls |> 
+  tar_target(parties,  polls |>
                filter(Election == 2023, VotingIntention > 0.025) |>
-               filter(n() > 3, .by=Party) |> 
-               distinct(Party) |> 
-               union(parties_in_parliament) |> 
+               filter(n() > 3, .by=Party) |>
+               distinct(Party) |>
+               union(parties_in_parliament) |>
                arrange(Party)),
-  tar_target(pollsters2020, polls |> 
+  tar_target(pollsters2020, polls |>
                filter(Election == 2020,
-                      Pollster != 'YouGov') |> # Only one YouGov poll 
+                      Pollster != 'YouGov') |> # Only one YouGov poll
                distinct(Pollster)),
-  tar_target(parties_in_parliament2020, 
+  tar_target(parties_in_parliament2020,
              tibble(Party = c('ACT', 'Green', 'Labour', 'National', 'NZ First'))),
-  tar_target(parties2020,  polls |> 
+  tar_target(parties2020,  polls |>
                filter(Election == 2020, VotingIntention > 0.025) |>
-               filter(n() > 3, .by=Party) |> 
-               distinct(Party) |> 
-               union(parties_in_parliament2020) |> 
+               filter(n() > 3, .by=Party) |>
+               distinct(Party) |>
+               union(parties_in_parliament2020) |>
                arrange(Party)),
   tar_target(party_colours,
              tribble(
@@ -222,8 +222,8 @@ list(
     Party = fct_other(Party, keep = parties$Party) |>
       fct_relevel(parties$Party)
   ) |>
-  filter(Party != 'Other') |> 
-  mutate(Polled = sum(VotingIntention), .by = c(Pollster, MidPoint)) |> 
+  filter(Party != 'Other') |>
+  mutate(Polled = sum(VotingIntention), .by = c(Pollster, MidPoint)) |>
   rename(MidDate = MidPoint, ElectionYear = Election) |>
   select(
     `Date range`,
@@ -243,7 +243,7 @@ list(
     values_fill = 0
   ) |>
   mutate(Other = pmax(0, 1 - Polled),
-         MidDateNumber = 1 + as.numeric(MidDate - election_weeks[1]) / 7) |> 
+         MidDateNumber = 1 + as.numeric(MidDate - election_weeks[1]) / 7) |>
   select(-Polled, -`Date range`)
 ),
   tar_target(
@@ -256,7 +256,7 @@ list(
   tar_target(
     # estimate the standard errors.  Note we are pretending they all have a sample size of 1000 -
     # which the main five do, but not some of the smaller ones.  Improvement would be to better deal with this.
-    
+
     all_ses,
     polls2 |>
       select(Pollster, ACT:Other) |>
@@ -274,36 +274,36 @@ list(
       group_split(Pollster)
   ),
   tar_target(
-    d1, list(mu_elect1 = as.numeric(elections[1, ]), 
+    d1, list(mu_elect1 = as.numeric(elections[1, ]),
            mu_elect2 = as.numeric(elections[2, ]),
-           mu_elect3 = as.numeric(elections[3, ]), 
+           mu_elect3 = as.numeric(elections[3, ]),
 
            n_parties = length(parties_ss),
-           n_weeks = weeks_between_elections, 
+           n_weeks = weeks_between_elections,
            # multiply the variance of all polls by 2.  See my blog post of 9 July 2017.
            inflator = sqrt(2),
-           
+
            y1_n = nrow(polls3[[1]]),
            y1_values = polls3[[1]][ , 4:11],
            y1_weeks = as.numeric(polls3[[1]]$MidDateNumber),
            y1_se = ses3[[1]]$se,
-           
+
            y2_n = nrow(polls3[[2]]),
            y2_values = polls3[[2]][ , 4:11],
            y2_weeks = as.numeric(polls3[[2]]$MidDateNumber),
            y2_se = ses3[[2]]$se,
-           
+
            y3_n = nrow(polls3[[3]]),
            y3_values = polls3[[3]][ , 4:11],
            y3_weeks = as.numeric(polls3[[3]]$MidDateNumber),
            y3_se = ses3[[3]]$se,
-           
+
            y4_n = nrow(polls3[[4]]),
            y4_values = polls3[[4]][ , 4:11],
            y4_weeks = as.numeric(polls3[[4]]$MidDateNumber),
            y4_se = ses3[[4]]$se,
            reid_method = as.numeric(polls3[[4]]$MidDate >= as.Date("2017-01-01")),
-           
+
            n_pollsters = 4)
   )
 )
@@ -324,7 +324,7 @@ list(
   tar_target(
     elections2020,
     results |>
-      filter(Election >= year(min(election_weeks2020)) & 
+      filter(Election >= year(min(election_weeks2020)) &
                Election < year(max(election_weeks2020))) |>
       mutate(
         Party = fct_other(Party, keep = parties2020$Party) |>
@@ -346,8 +346,8 @@ list(
     Party = fct_other(Party, keep = parties2020$Party) |>
       fct_relevel(parties2020$Party)
   ) |>
-  filter(Party != 'Other') |> 
-  mutate(Polled = sum(VotingIntention), .by = c(Pollster, MidPoint)) |> 
+  filter(Party != 'Other') |>
+  mutate(Polled = sum(VotingIntention), .by = c(Pollster, MidPoint)) |>
   rename(MidDate = MidPoint, ElectionYear = Election) |>
   count(
     Party,
@@ -367,7 +367,7 @@ list(
     values_fill = 0
   ) |>
   mutate(Other = pmax(0, 1 - Polled),
-         MidDateNumber = 1 + as.numeric(MidDate - election_weeks2020[1]) / 7) |> 
+         MidDateNumber = 1 + as.numeric(MidDate - election_weeks2020[1]) / 7) |>
   select(-Polled)
 
   ),
@@ -381,7 +381,7 @@ list(
   tar_target(
     # estimate the standard errors.  Note we are pretending they all have a sample size of 1000 -
     # which the main five do, but not some of the smaller ones.  Improvement would be to better deal with this.
-    
+
     all_ses2020,
     polls22020 |>
       select(Pollster, ACT:Other) |>
@@ -399,31 +399,31 @@ list(
       group_split(Pollster)
   ),
   tar_target(
-    d12020, list(mu_elect1 = as.numeric(elections2020[1, ]), 
+    d12020, list(mu_elect1 = as.numeric(elections2020[1, ]),
            mu_elect2 = as.numeric(elections2020[2, ]),
-           mu_elect3 = as.numeric(elections2020[3, ]), 
+           mu_elect3 = as.numeric(elections2020[3, ]),
 
            n_parties = length(parties_ss2020),
-           n_weeks = weeks_between_elections2020, 
+           n_weeks = weeks_between_elections2020,
            # multiply the variance of all polls by 2.  See my blog post of 9 July 2017.
            inflator = sqrt(2),
-           
+
            y1_n = nrow(polls32020[[1]]),
            y1_values = polls32020[[1]][ , 4:9],
            y1_weeks = as.numeric(polls32020[[1]]$MidDateNumber),
            y1_se = ses32020[[1]]$se,
-           
+
            y2_n = nrow(polls32020[[2]]),
            y2_values = polls32020[[2]][ , 4:9],
            y2_weeks = as.numeric(polls32020[[2]]$MidDateNumber),
            y2_se = ses32020[[2]]$se,
            reid_method = as.numeric(polls32020[[2]]$MidDate >= as.Date("2017-01-01")),
-           
+
            y3_n = nrow(polls32020[[3]]),
            y3_values = polls32020[[3]][ , 4:9],
            y3_weeks = as.numeric(polls32020[[3]]$MidDateNumber),
            y3_se = ses32020[[3]]$se,
-           
+
            n_pollsters = 3)
   )
 )
@@ -567,10 +567,10 @@ Grab the simulation results for party vote for election night and the current
 week. Currently hard coding the current week - but will need to do something better.
 
 Assumption is hard-coded that parties that currently have an electorate seat will
-keep at least one and no additional parties will pick up an electorate seat. 
+keep at least one and no additional parties will pick up an electorate seat.
 Future work will make this more flexible.
 
-We render an mobile screen sized plot and the desktop sized plot and load these 
+We render an mobile screen sized plot and the desktop sized plot and load these
 as SVGs - slightly clunky but is actually a good way to display ggplot2 images
 on the web.
 
@@ -601,13 +601,13 @@ list(
     sims_election_night,
     weekly_mu[, 1:8 * 473] |> as_tibble() |> set_names(parties_ss) |>
       select(all_of(sort(parties_ss))) |>
-      select(-Other) 
+      select(-Other)
   ),
   tar_target(
     sims_saturday,
     weekly_mu[, 1:8 * 473 - 24] |> as_tibble() |> set_names(parties_ss) |>
       select(all_of(sort(parties_ss))) |>
-      select(-Other) 
+      select(-Other)
   ),
   tar_target(seats_election_night, simulate_seats(sims_election_night)),
   tar_target(seats_saturday, simulate_seats(sims_saturday))
@@ -731,4 +731,3 @@ list(
   })
 )
 ```
-
