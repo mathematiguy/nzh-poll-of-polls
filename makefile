@@ -26,7 +26,11 @@ buildsite: $(shell ls *.qmd | sed 's/\.qmd/.html/g')
 run: renv/profiles/buildsite/renv/library/R-4.2/x86_64-pc-linux-gnu \
 	renv/profiles/model/renv/library/R-4.2/x86_64-pc-linux-gnu \
 	.cmdstan/cmdstan-2.32.2
-	$(RUN) bash run.sh
+	$(RUN) Rscript run.R
+
+r_shell: DOCKER_ARGS= -dit --rm -e DISPLAY=$$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix:ro --name="rdev"
+r_shell:
+	$(RUN) R
 
 docker:
 	docker build $(DOCKER_ARGS) --tag $(IMAGE):$(GIT_TAG) .
