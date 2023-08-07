@@ -1,7 +1,7 @@
-
-fetch_results <- function(url, num_parties, year) {
+fetch_results <- function(year, num_parties) {
+  file_path <- paste0("data/results/results-", year, ".csv")
   read_csv(
-    url,
+    file_path,
     skip = 6,
     col_names = c('Party', 'Seats', 'Votes', 'Percentage'),
     col_types = cols_only(
