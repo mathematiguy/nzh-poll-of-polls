@@ -318,7 +318,7 @@ for the 2020 election that we can use to check how well the model performs.
 ```{targets prep2020}
 list(
   tar_target(election_weeks2020, floor_date(ymd(
-    c("2011-11-26", "2014-09-20", "2017-09-23", "2020-10-17")
+    c("2011-11-26", "2014-09-20", "2017-09-23", "2020-10-17", "2023-10-14")
   ), unit = 'week')),
   tar_target(weeks_between_elections2020, as.integer(diff(election_weeks)) / 7),
   tar_target(
@@ -338,7 +338,7 @@ list(
   tar_target(
     polls22020,
     polls |>
-      filter(Election %in% c(2014, 2017, 2020),
+      filter(Election %in% c(2014, 2017, 2020, 2023),
              Pollster %in% c(pollsters2020$Pollster),
              !is.na(MidPoint)) |>
   mutate(
