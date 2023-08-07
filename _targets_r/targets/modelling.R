@@ -21,5 +21,4 @@ list(
     max_treedepth = 20,
     deployment = "worker"
   )
-
 )

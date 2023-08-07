@@ -34,9 +34,11 @@ list(
         colour = "grey60"
       ) +
       scale_y_continuous(labels = percent) +
-      scale_x_date(breaks = ym(
-        c('2016-01', '2018-01', '2020-01', '2022-01')
-      ), date_labels = '%Y') +
+      scale_x_date(
+        breaks = ym(seq('2016-01', '2023-01', by = '1 year')), # Major and minor breaks every year
+        labels = function(x) ifelse(year(x) %% 2 == 0, year(x), ""), # Labels only for even years
+        date_labels = '%Y'
+      ) +
       scale_fill_manual(values = party_colours$Colour, breaks = party_colours$Party) +
       geom_line(
         data = voting_intention_chartdata |> filter(week <= today()),
