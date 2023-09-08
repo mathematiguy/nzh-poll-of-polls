@@ -33,6 +33,8 @@ list(
                "National", "#065BAA",
                "NZ First", "#212529",
                "TOP", "#09B598",
-               "Other", "#B3B3B3"
+               "Other", "#B3B3B3",
+               "Labour + Green + Te Pāti Māori", "#d82c20",
+               "National + Act", "#065BAA"
              ) |> mutate(Party = as_factor(Party)))
 )

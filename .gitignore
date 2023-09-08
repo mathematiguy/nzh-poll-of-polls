@@ -18,3 +18,4 @@ output/*.svg
 /.cmdstan/
 /.lesshst
 /.lintr
+output/

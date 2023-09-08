@@ -24,8 +24,8 @@ list(
     Party = fct_other(Party, keep = parties$Party) |>
       fct_relevel(parties$Party)
   ) |>
-  filter(Party != 'Other') |> 
-  mutate(Polled = sum(VotingIntention), .by = c(Pollster, MidPoint)) |> 
+  filter(Party != 'Other') |>
+  mutate(Polled = sum(VotingIntention), .by = c(Pollster, MidPoint)) |>
   rename(MidDate = MidPoint, ElectionYear = Election) |>
   select(
     `Date range`,
@@ -45,7 +45,7 @@ list(
     values_fill = 0
   ) |>
   mutate(Other = pmax(0, 1 - Polled),
-         MidDateNumber = 1 + as.numeric(MidDate - election_weeks[1]) / 7) |> 
+         MidDateNumber = 1 + as.numeric(MidDate - election_weeks[1]) / 7) |>
   select(-Polled, -`Date range`)
 ),
   tar_target(
@@ -58,7 +58,7 @@ list(
   tar_target(
     # estimate the standard errors.  Note we are pretending they all have a sample size of 1000 -
     # which the main five do, but not some of the smaller ones.  Improvement would be to better deal with this.
-    
+
     all_ses,
     polls2 |>
       select(Pollster, ACT:Other) |>
@@ -76,37 +76,40 @@ list(
       group_split(Pollster)
   ),
   tar_target(
-    d1, list(mu_elect1 = as.numeric(elections[1, ]), 
+    d1, list(mu_elect1 = as.numeric(elections[1, ]),
            mu_elect2 = as.numeric(elections[2, ]),
-           mu_elect3 = as.numeric(elections[3, ]), 
+           mu_elect3 = as.numeric(elections[3, ]),
 
            n_parties = length(parties_ss),
-           n_weeks = weeks_between_elections, 
+           n_weeks = weeks_between_elections,
            # multiply the variance of all polls by 2.  See my blog post of 9 July 2017.
            inflator = sqrt(2),
-           
+
            y1_n = nrow(polls3[[1]]),
            y1_values = polls3[[1]][ , 4:11],
            y1_weeks = as.numeric(polls3[[1]]$MidDateNumber),
            y1_se = ses3[[1]]$se,
-           
+
            y2_n = nrow(polls3[[2]]),
            y2_values = polls3[[2]][ , 4:11],
            y2_weeks = as.numeric(polls3[[2]]$MidDateNumber),
            y2_se = ses3[[2]]$se,
-           
+
            y3_n = nrow(polls3[[3]]),
            y3_values = polls3[[3]][ , 4:11],
            y3_weeks = as.numeric(polls3[[3]]$MidDateNumber),
            y3_se = ses3[[3]]$se,
-           
+
            y4_n = nrow(polls3[[4]]),
            y4_values = polls3[[4]][ , 4:11],
            y4_weeks = as.numeric(polls3[[4]]$MidDateNumber),
            y4_se = ses3[[4]]$se,
            reid_method = as.numeric(polls3[[4]]$MidDate >= as.Date("2017-01-01")),
-           
            n_pollsters = 4)
-  )
+  ),
+  tar_file(polls2_csv, {
+    f = "output/polls2.csv"
+    write_csv(polls2, f)
+    f
+  })
 )
-

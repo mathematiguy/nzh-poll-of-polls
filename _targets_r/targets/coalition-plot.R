@@ -1,18 +1,24 @@
-coalition_plot <- function(seats) {
+coalition_data <- function(seats) {
   seats  |>
     select(National,
            Labour,
-           NatCoal,
+           NatAct,
+           NatActNZF,
            LabGreen,
-           LabGreenMaori,
-           NatCoalMaori) |>
+           LabGreenNZF,
+           LabGreenMaori) |>
     gather(Coalition, Seats) |>
-    mutate(lab_in = ifelse(grepl("^Lab", Coalition), "Labour-based", "Nationals-based")) |>
+    mutate(lab_in = ifelse(grepl("^Lab", Coalition), "Labour-based", "National-based")) |>
     mutate(
       Coalition = gsub("^LabGreen", "Labour, Greens", Coalition),
-      Coalition = gsub("^NatCoal", "National, ACT", Coalition),
+      Coalition = gsub("^NatAct", "National, ACT", Coalition),
+      Coalition = gsub("NZF$", ", NZ First", Coalition),
       Coalition = gsub("Maori", ",\nTe Pāti Māori", Coalition)
-    ) |>
+    )
+}
+
+coalition_plot <- function(data) {
+  data |>
     ggplot(aes(x = Seats, fill = lab_in)) +
     geom_histogram(
       alpha = 0.5,
@@ -40,8 +46,10 @@ coalition_plot <- function(seats) {
 }
 
 list(
-  tar_target(election_night_plot, coalition_plot(seats_election_night)),
-  tar_target(saturday_plot, coalition_plot(seats_saturday)),
+  tar_target(election_night_data, coalition_data(seats_election_night)),
+  tar_target(nowcast_data, coalition_data(seats_nowcast)),
+  tar_target(election_night_plot, coalition_plot(election_night_data)),
+  tar_target(nowcast_plot, coalition_plot(nowcast_data)),
   tar_file(election_night620, {
     f <- "output/election_night620.svg"
     ggsave(
@@ -54,8 +62,9 @@ list(
             "National",
             "Labour, Greens",
             "National, ACT",
+            "National, ACT, NZ First",
             "Labour, Greens,\nTe Pāti Māori",
-            "National, ACT,\nTe Pāti Māori"
+            "Labour, Greens, NZ First"
           )
         ), ncol = 2),
       dpi = 100,
@@ -77,11 +86,11 @@ list(
     )
     f
   }),
-  tar_file(saturday620, {
-    f <- "output/saturday620.svg"
+  tar_file(nowcast620, {
+    f <- "output/nowcast620.svg"
     ggsave(
       f,
-      plot = saturday_plot +
+      plot = nowcast_plot +
         facet_wrap(~ factor(
           Coalition,
           levels = c(
@@ -89,8 +98,7 @@ list(
             "National",
             "Labour, Greens",
             "National, ACT",
-            "Labour, Greens,\nTe Pāti Māori",
-            "National, ACT,\nTe Pāti Māori"
+            "Labour, Greens,\nTe Pāti Māori"
           )
         ), ncol = 2),
       dpi = 100,
@@ -99,11 +107,11 @@ list(
     )
     f
   }),
-  tar_file(saturday375, {
-    f <- "output/saturday375.svg"
+  tar_file(nowcast375, {
+    f <- "output/nowcast375.svg"
     ggsave(
       f,
-      plot = saturday_plot +
+      plot = nowcast_plot +
         facet_wrap(~ Coalition,
                    ncol = 1),
       dpi = 100,
