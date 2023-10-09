@@ -29,63 +29,55 @@ list(
         select(all_of(sort(parties_ss))) |>
         select(-Other)
     }),
-  tar_target(
-    sims_nowcast, {
-      n_parties = 8
-
-      # Assume the date of the first election in your data
-      first_election_date <- as.Date("2014-10-20")
-
-      # Get the current date
-      current_date <- Sys.Date()
-
-      # Calculate the difference in weeks
-      weeks_since_first_election <- as.numeric(difftime(current_date, first_election_date, units = "weeks"))
-      indices_nowcast <- seq(weeks_since_first_election, weeks_since_first_election + 473 * (n_parties - 1), by = 473)
-
-      weekly_mu[, indices_nowcast] |> as_tibble() |> set_names(parties_ss) |>
-        select(all_of(sort(parties_ss))) |>
-        select(-Other)
-  }),
   tar_target(seats_election_night, simulate_seats(sims_election_night)),
-  tar_target(seats_nowcast, simulate_seats(sims_nowcast)),
   tar_target(coalition_odds, {
     seats_election_night |>
       select(Labour, National, ACT, Green, `NZ First`, `Te Pāti Māori`) |>
       summarise(
-        NatActNZF = sum((National + ACT + `NZ First` > 60) & (National + ACT <= 60) & (National <= 60)),
         NatAct = sum((National + ACT > 60) & (National <= 60)),
+        NatActNZF = sum((National + ACT + `NZ First` > 60) & (National + ACT <= 60) & (Labour + Green + `Te Pāti Māori` + `NZ First` <= 60)) + sum((National + ACT <= 60) & (Labour + Green + `Te Pāti Māori` <= 60) & (National + ACT + `NZ First` > 60) & (Labour + Green + `Te Pāti Māori` + `NZ First` > 60)),
         LabGreen = sum((Labour + Green > 60) & (Labour <= 60)),
-        LabGreenNZF = sum((Labour + Green + `NZ First` > 60) & (Labour + Green + `Te Pāti Māori` <= 60) & (Labour + Green <= 60)),
         LabGreenMaori = sum((Labour + Green + `Te Pāti Māori` > 60) & (Labour + Green <= 60)),
+          NoWinner = sum((National + ACT + `NZ First` <= 60) & (Labour + Green + `Te Pāti Māori` + `NZ First`<= 60)) + sum((Labour + Green + `Te Pāti Māori` + `NZ First` > 60) & (Labour + Green + `Te Pāti Māori` <= 60) & (National + ACT + `NZ First` <= 60)),,
         Labour = sum(Labour > 60),
         National = sum(National > 60)
       ) |>
       pivot_longer(everything(), names_to="Coalition", values_to="Sims") |>
       mutate(Prob = Sims / 8000,
-             Winner = if_else(str_starts(Coalition, "Lab"), "Labour", "National")) |>
+             Winner = case_when(
+               str_starts(Coalition, "Lab") ~ "Labour",
+               str_starts(Coalition, "Nat") ~ "National",
+               Coalition == "NatActNZF" ~ "National",
+               Coalition == "NZF" ~ "NZ First (Kingmaker)",
+               Coalition == "NoWinner" ~ "Hung Parliament"
+             )) |>
       arrange(Winner, desc(Sims))
   }),
   tar_file(coalition_odds_plot, {
     f <- "output/coalition_odds_plot.svg"
 
+    todays_date = format(Sys.Date(), "%d %B")
     coalition_odds_plot <- coalition_odds |>
       filter(!(Coalition %in% c("Labour", "National"))) |>
       mutate(
         Percentage = Prob * 100,
-        Coalition = gsub("^LabGreen", "Labour, Greens", Coalition),
-        Coalition = gsub("^NatAct", "National, ACT", Coalition),
-        Coalition = gsub("NZF$", ", NZ First", Coalition),
-        Coalition = gsub("Maori", ",\nTe Pāti Māori", Coalition)
-      ) |>
+        Coalition = case_when(
+          Coalition == "LabGreen" ~ "Labour, Greens",
+          Coalition == "NatAct" ~ "National, ACT",
+          Coalition == "NatActNZF" ~ "National, ACT, NZ First",
+          Coalition == "NZF" ~ "NZ First (Kingmaker)",
+          Coalition == "LabGreenMaori" ~ "Labour, Greens, Te Pāti Māori",
+          Coalition == "LabGreenMaoriNZF" ~ "Labour, Greens, Te Pāti Māori, NZ First",
+          Coalition == "NoWinner" ~ "Hung parliament"
+        )) |>
       ggplot(aes(x = Coalition, y = Percentage, fill = Winner)) +
       geom_col() +
-      geom_text(aes(label = paste0(round(Percentage, 1), "%")), vjust = 0, hjust = -0.4) +
-      ggtitle("2023 NZ Election Coalition odds at 27 August") +
-      ylim(0, 55) +
-      ylab("Percentage odds") +
+      geom_text(aes(label = paste0(round(Percentage, 1), "%")), vjust = 0, hjust = -0.05) +
+      ggtitle(paste("2023 NZ Election estimated \nWinning Coalitions at", todays_date)) +
+      ylim(0, 100) +
+      ylab("Probability") +
       coord_flip() +
-      scale_fill_manual(values = c('#d82c20', '#065BAA')) +
+      scale_fill_manual(values = c('#ABB0B8', '#D82C20', '#065BAA', '#000000')) +
       theme_clean() +
       theme(
         legend.position = 'none',
