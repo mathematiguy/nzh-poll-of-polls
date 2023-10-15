@@ -35,10 +35,12 @@ list(
       select(Labour, National, ACT, Green, `NZ First`, `Te Pāti Māori`) |>
       summarise(
         NatAct = sum((National + ACT > 60) & (National <= 60)),
-        NatActNZF = sum((National + ACT + `NZ First` > 60) & (National + ACT <= 60) & (Labour + Green + `Te Pāti Māori` + `NZ First` <= 60)) + sum((National + ACT <= 60) & (Labour + Green + `Te Pāti Māori` <= 60) & (National + ACT + `NZ First` > 60) & (Labour + Green + `Te Pāti Māori` + `NZ First` > 60)),
-        LabGreen = sum((Labour + Green > 60) & (Labour <= 60)),
+        NatActNZF = sum((National + ACT + `NZ First` > 60) & (National + ACT <= 60) & (Labour + Green + `Te Pāti Māori` + `NZ First` <= 60)),
+        # LabGreen = sum((Labour + Green > 60) & (Labour <= 60)),
         LabGreenMaori = sum((Labour + Green + `Te Pāti Māori` > 60) & (Labour + Green <= 60)),
-          NoWinner = sum((National + ACT + `NZ First` <= 60) & (Labour + Green + `Te Pāti Māori` + `NZ First`<= 60)) + sum((Labour + Green + `Te Pāti Māori` + `NZ First` > 60) & (Labour + Green + `Te Pāti Māori` <= 60) & (National + ACT + `NZ First` <= 60)),,
+        # LabGreenMaoriNZF = sum((Labour + Green + `Te Pāti Māori` + `NZ First` > 60) & (Labour + Green + `Te Pāti Māori` <= 60) & (National + ACT + `NZ First` <= 60)),
+        NZF = sum((National + ACT <= 60) & (Labour + Green + `Te Pāti Māori` <= 60) & (National + ACT + `NZ First` > 60) & (Labour + Green + `Te Pāti Māori` + `NZ First` > 60)),
+        NoWinner = sum((National + ACT + `NZ First` <= 60) & (Labour + Green + `Te Pāti Māori` + `NZ First`<= 60)) + sum((Labour + Green + `Te Pāti Māori` + `NZ First` > 60) & (Labour + Green + `Te Pāti Māori` <= 60) & (National + ACT + `NZ First` <= 60)),
         Labour = sum(Labour > 60),
         National = sum(National > 60)
       ) |>
@@ -53,6 +55,136 @@ list(
              )) |>
       arrange(Winner, desc(Sims))
   }),
+  tar_target(calibration_data, {
+
+    # -------------------------
+    # Common Preparation
+    # -------------------------
+    # Original Election Results
+    results_2023 <- c(
+      "ACT" = 9.00,
+      "Green" = 10.78,
+      "Labour" = 26.85,
+      "National" = 38.99,
+      "NZ First" = 6.46,
+      "Te Pāti Māori" = 2.60,
+      "TOP" = 2.07
+    ) / 100
+
+    # Convert sims to a tibble of numeric vectors
+    sims_numeric <- sims_election_night |>
+      lapply(as.numeric) |>
+      as_tibble()
+
+    # Calculate column means and standard deviations
+    result_means <- colMeans(sims_numeric, na.rm = TRUE)
+    result_sds <- apply(sims_numeric, 2, sd, na.rm = TRUE)
+
+    # Standardize the simulation results and the actual results
+    standardized_sims <- sims_numeric |>
+      sweep(2, result_means, "-") |>
+      sweep(2, result_sds, "/") |>
+      as_tibble()
+
+    z_scores_actual_results <- (results_2023 - result_means) / result_sds
+    actual_results_tibble <- tibble(Value = as.numeric(z_scores_actual_results), Party = names(z_scores_actual_results))
+
+    # -------------------------
+    # Branch 1: bar_plot
+    # -------------------------
+    bar_plot <- function() {
+      # Statistical Calculations
+      alpha <- 0.05
+      corrected_alpha <- alpha / length(z_scores_actual_results)
+      critical_z <- qnorm(1 - corrected_alpha / 2)
+
+      # Visualization Settings
+      party_colours <- c(
+        'Labour' = '#d82c20',
+        'National' = '#065BAA',
+        'ACT' = '#E6B800',
+        'Green' = '#228B22',
+        'NZ First' = '#505050',
+        'Te Pāti Māori' = '#800000',
+        'TOP' = '#99C4D2'
+      )
+
+      muted_colours <- sapply(party_colours, function(color) {
+        adjustcolor(color, alpha.f = 0.8)
+      })
+
+      # Bar plot
+      ggplot(actual_results_tibble, aes(x = Party, y = Value)) +
+        geom_bar(stat = "identity", aes(fill = Party), show.legend = FALSE) +
+        geom_hline(yintercept = c(-critical_z, critical_z), linetype = "dashed", color = "red") +
+        labs(
+          title = "Significance Testing of Z-Scores per Party",
+          subtitle = paste("Red dashed lines represent critical Z-score for alpha =", round(corrected_alpha, 4)),
+          y = "Z-Score",
+          x = "Party"
+        ) +
+        theme_clean() +
+        coord_flip() +
+        scale_fill_manual(values = muted_colours) +
+        theme(
+          legend.position = 'none',
+          strip.background = element_rect(fill = '#121617'),
+          strip.text = element_text(colour = 'white'),
+          plot.background = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          plot.title = element_text(hjust = 0.5, face = "bold")
+        )
+    }
+
+    # -------------------------
+    # Branch 2: hist_plot
+    # -------------------------
+    hist_plot <- function() {
+      # Convert the data frame to long format for ggplot2 plotting
+      standardized_sims_long <- standardized_sims |>
+        pivot_longer(cols = everything(), names_to = "Party", values_to = "Value")
+
+      # Visualization Settings
+      party_colours <- c(
+        'Labour' = '#d82c20',
+        'National' = '#065BAA',
+        'ACT' = '#E6B800',
+        'Green' = '#228B22',
+        'NZ First' = '#505050',
+        'Te Pāti Māori' = '#800000',
+        'TOP' = '#99C4D2'
+      )
+
+      # Histogram plot
+      ggplot(standardized_sims_long, aes(x = Value)) +
+        geom_histogram(aes(y = ..density.., fill = Party), binwidth = 0.1, alpha = 0.5, colour = NA) +
+        geom_vline(data = actual_results_tibble,
+                   aes(xintercept = Value),
+                   color = "red",
+                   linetype = "dashed", size = 1.2) +
+        facet_wrap(~ Party, scales = 'free_y', ncol = 2) +
+        scale_fill_manual(values = party_colours) +
+        labs(title = "Standardized Simulated Election Results with Actual Z-scores",
+             x = "Z-Score",
+             y = NULL) +
+        theme_clean() +
+        theme(
+          legend.position = 'none',
+          strip.background = element_rect(fill = '#121617'),
+          strip.text = element_text(colour = 'white'),
+          plot.background = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          plot.title = element_text(hjust = 0.5, face = "bold")
+        )
+    }
+
+    # You can now call each function to display the respective plots.
+    bar_plot()
+    hist_plot()
+
+ })
   tar_file(coalition_odds_plot, {
     f <- "output/coalition_odds_plot.svg"
 

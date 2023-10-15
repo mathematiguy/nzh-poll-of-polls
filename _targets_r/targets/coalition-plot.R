@@ -51,8 +51,8 @@ coalition_plot <- function(data) {
 }
 
 party_seats_data <- function(data) {
-  data |> 
-    dplyr::select(Coalition, Seats) |> 
+  data |>
+    dplyr::select(Coalition, Seats) |>
     dplyr::filter(Coalition %in% c("Labour", "National", "ACT", "Green", "NZ First", "Te Pāti Māori")) |>
     mutate(lab_in = ifelse(grepl("^Lab", Coalition), "Labour-based", "National-based"))
 }
@@ -84,7 +84,7 @@ facet_party_plot <- function(data) {
       'NZ First' = '#505050',
       'Te Pāti Māori' = '#800000' # Maroon
     )) +
-    theme_minimal() +
+    theme_clean() +
     theme(
       legend.position = 'none',
       strip.background = element_rect(fill = '#121617'),
